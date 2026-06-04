@@ -31,10 +31,12 @@ public class ExceptionHandlingMiddleware
     {
         var (statusCode, title) = ex switch
         {
-            KeyNotFoundException      => (HttpStatusCode.NotFound,            "Resource not found."),
-            UnauthorizedAccessException => (HttpStatusCode.Forbidden,         "Access denied."),
-            InvalidOperationException => (HttpStatusCode.BadRequest,          "Bad request."),
-            _                         => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
+            KeyNotFoundException        => (HttpStatusCode.NotFound,    "Resource not found."),
+            UnauthorizedAccessException => (HttpStatusCode.Forbidden,   "Access denied."),
+            InvalidOperationException e when e.Message.Contains("SKU")
+                                        => (HttpStatusCode.Conflict,    "Conflict."),
+            InvalidOperationException   => (HttpStatusCode.BadRequest,  "Bad request."),
+            _                           => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };
 
         context.Response.StatusCode = (int)statusCode;

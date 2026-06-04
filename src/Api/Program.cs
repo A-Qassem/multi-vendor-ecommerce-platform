@@ -6,7 +6,6 @@ using MultiVendor.Ecommerce.Api.Middleware;
 using MultiVendor.Ecommerce.Application.Interfaces;
 using MultiVendor.Ecommerce.Application.Interfaces.Auth;
 using MultiVendor.Ecommerce.Application.Services;
-
 using MultiVendor.Ecommerce.Infrastructure.Data;
 using MultiVendor.Ecommerce.Infrastructure.Repositories;
 using MultiVendor.Ecommerce.Infrastructure.Services;
@@ -45,6 +44,8 @@ builder.Services.AddScoped<IAuthService,           AuthService>();
 builder.Services.AddScoped<ICurrentMerchantService, CurrentMerchantService>();
 builder.Services.AddScoped<IProductRepository,     ProductRepository>();
 builder.Services.AddScoped<IProductService,        ProductService>();
+builder.Services.AddScoped<IVariantRepository,     VariantRepository>();
+builder.Services.AddScoped<IVariantService,        VariantService>();
 
 // ── API / OpenAPI ─────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
