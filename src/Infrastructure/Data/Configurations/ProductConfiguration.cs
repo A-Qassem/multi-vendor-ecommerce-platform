@@ -55,6 +55,10 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasForeignKey(i => i.ProductId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.Navigation(p => p.Attributes).AutoInclude(false);
+        builder.Navigation(p => p.Variants).AutoInclude(false);
+        builder.Navigation(p => p.Images).AutoInclude(false);
+
         // Indexes
         builder.HasIndex(p => p.MerchantId);
         builder.HasIndex(p => p.Status);
