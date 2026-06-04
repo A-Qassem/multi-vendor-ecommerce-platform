@@ -69,6 +69,7 @@ public class AuthService : IAuthService
         }
 
         token.IsRevoked = true;
+        await _db.SaveChangesAsync(ct);
 
         Log.Information("Token refreshed for merchant: {MerchantId}", token.MerchantId);
         return await IssueTokensAsync(token.Merchant, ct);
