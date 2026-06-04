@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Moq;
 using MultiVendor.Ecommerce.Application.DTOs.Variants;
+using MultiVendor.Ecommerce.Application.Events;
 using MultiVendor.Ecommerce.Application.Interfaces;
 using MultiVendor.Ecommerce.Application.Services;
 using MultiVendor.Ecommerce.Domain.Entities;
@@ -10,9 +11,10 @@ namespace MultiVendor.Ecommerce.Application.Tests.Variants;
 
 public class VariantServiceTests
 {
-    private readonly Mock<IVariantRepository>      _variantRepoMock     = new();
-    private readonly Mock<IProductRepository>      _productRepoMock     = new();
-    private readonly Mock<ICurrentMerchantService> _currentMerchantMock = new();
+    private readonly Mock<IVariantRepository>           _variantRepoMock     = new();
+    private readonly Mock<IProductRepository>           _productRepoMock     = new();
+    private readonly Mock<ICurrentMerchantService>      _currentMerchantMock = new();
+    private readonly Mock<IEventHandler<LowStockEvent>> _lowStockHandlerMock = new();
     private readonly VariantService _sut;
 
     private static readonly Guid MerchantId = Guid.NewGuid();
@@ -21,10 +23,15 @@ public class VariantServiceTests
 
     public VariantServiceTests()
     {
+        _lowStockHandlerMock
+            .Setup(x => x.HandleAsync(It.IsAny<LowStockEvent>()))
+            .Returns(Task.CompletedTask);
+
         _sut = new VariantService(
             _variantRepoMock.Object,
             _productRepoMock.Object,
-            _currentMerchantMock.Object);
+            _currentMerchantMock.Object,
+            _lowStockHandlerMock.Object);
 
         _currentMerchantMock.Setup(x => x.MerchantId).Returns(MerchantId);
     }

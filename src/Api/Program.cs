@@ -8,6 +8,7 @@ using Serilog;
 using Serilog.Events;
 using Swashbuckle.AspNetCore.SwaggerUI;
 using MultiVendor.Ecommerce.Api.Middleware;
+using MultiVendor.Ecommerce.Application.Events;
 using MultiVendor.Ecommerce.Application.Interfaces;
 using MultiVendor.Ecommerce.Application.Interfaces.Auth;
 using MultiVendor.Ecommerce.Application.Services;
@@ -77,6 +78,8 @@ try
     builder.Services.AddScoped<IProductService,         ProductService>();
     builder.Services.AddScoped<IVariantRepository,      VariantRepository>();
     builder.Services.AddScoped<IVariantService,         VariantService>();
+    builder.Services.AddScoped<IEmailService,           DummyEmailService>();
+    builder.Services.AddScoped<IEventHandler<LowStockEvent>, LowStockEventHandler>();
 
     builder.Services.AddStackExchangeRedisCache(options =>
     {

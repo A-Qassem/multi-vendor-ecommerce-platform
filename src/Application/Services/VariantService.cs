@@ -1,5 +1,6 @@
 using MultiVendor.Ecommerce.Application.Common;
 using MultiVendor.Ecommerce.Application.DTOs.Variants;
+using MultiVendor.Ecommerce.Application.Events;
 using MultiVendor.Ecommerce.Application.Interfaces;
 using MultiVendor.Ecommerce.Domain.Entities;
 using Serilog;
@@ -11,15 +12,18 @@ public class VariantService : IVariantService
     private readonly IVariantRepository _variantRepository;
     private readonly IProductRepository _productRepository;
     private readonly ICurrentMerchantService _currentMerchant;
+    private readonly IEventHandler<LowStockEvent> _lowStockHandler;
 
     public VariantService(
         IVariantRepository variantRepository,
         IProductRepository productRepository,
-        ICurrentMerchantService currentMerchant)
+        ICurrentMerchantService currentMerchant,
+        IEventHandler<LowStockEvent> lowStockHandler)
     {
         _variantRepository = variantRepository;
         _productRepository = productRepository;
         _currentMerchant   = currentMerchant;
+        _lowStockHandler   = lowStockHandler;
     }
 
     public async Task<VariantResponse> GetByIdAsync(Guid productId, Guid variantId)
@@ -127,6 +131,13 @@ public class VariantService : IVariantService
 
         await _variantRepository.UpdateAsync(variant);
         Log.Information("Variant updated: {VariantId}", variantId);
+
+        if (variant.Quantity <= 5)
+        {
+            var product = await _productRepository.GetByIdAsync(productId);
+            await _lowStockHandler.HandleAsync(
+                new LowStockEvent(variant.Id, variant.SKU, product!.MerchantId));
+        }
 
         var updated = await _variantRepository.GetByIdWithAttributesAsync(variantId)
             ?? throw new InvalidOperationException("Failed to load updated variant.");
