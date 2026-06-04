@@ -78,6 +78,12 @@ try
     builder.Services.AddScoped<IVariantRepository,      VariantRepository>();
     builder.Services.AddScoped<IVariantService,         VariantService>();
 
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = builder.Configuration.GetConnectionString("Redis");
+        options.InstanceName  = "MultiVendor:";
+    });
+
     // ── API / Swagger ─────────────────────────────────────────────────────────
     builder.Services.AddControllers();
     builder.Services.AddSwaggerGen(c =>

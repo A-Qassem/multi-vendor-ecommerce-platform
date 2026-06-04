@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Microsoft.Extensions.Caching.Distributed;
 using MultiVendor.Ecommerce.Application.Common;
 using MultiVendor.Ecommerce.Application.DTOs.Products;
 using MultiVendor.Ecommerce.Application.Interfaces;
@@ -11,15 +13,42 @@ public class ProductService : IProductService
 {
     private readonly IProductRepository _repository;
     private readonly ICurrentMerchantService _currentMerchant;
+    private readonly IDistributedCache _cache;
 
-    public ProductService(IProductRepository repository, ICurrentMerchantService currentMerchant)
+    private static readonly DistributedCacheEntryOptions CacheOptions = new()
     {
-        _repository     = repository;
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+    };
+
+    public ProductService(
+        IProductRepository repository,
+        ICurrentMerchantService currentMerchant,
+        IDistributedCache cache)
+    {
+        _repository      = repository;
         _currentMerchant = currentMerchant;
+        _cache           = cache;
     }
 
     public async Task<ProductResponse> GetByIdAsync(Guid id)
     {
+        var cacheKey = $"product:{id}";
+
+        var cached = await _cache.GetStringAsync(cacheKey);
+        if (cached is not null)
+        {
+            var cachedProduct = JsonSerializer.Deserialize<ProductResponse>(cached)!;
+
+            if (cachedProduct.MerchantId != _currentMerchant.MerchantId)
+            {
+                Log.Warning("Merchant {MerchantId} attempted to access product {ProductId} owned by another merchant",
+                    _currentMerchant.MerchantId, id);
+                throw new UnauthorizedAccessException("You do not own this product.");
+            }
+
+            return cachedProduct;
+        }
+
         var product = await _repository.GetByIdAsync(id)
             ?? throw new KeyNotFoundException($"Product '{id}' was not found.");
 
@@ -30,7 +59,10 @@ public class ProductService : IProductService
             throw new UnauthorizedAccessException("You do not own this product.");
         }
 
-        return MapToResponse(product);
+        var response = MapToResponse(product);
+        await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(response), CacheOptions);
+
+        return response;
     }
 
     public async Task<PagedResult<ProductResponse>> GetAllAsync(ProductListRequest request)
@@ -96,6 +128,7 @@ public class ProductService : IProductService
         }
 
         await _repository.UpdateAsync(product);
+        await _cache.RemoveAsync($"product:{id}");
 
         Log.Information("Product updated: {ProductId}", id);
 
@@ -115,6 +148,7 @@ public class ProductService : IProductService
         }
 
         await _repository.DeleteAsync(product);
+        await _cache.RemoveAsync($"product:{id}");
 
         Log.Information("Product deleted: {ProductId}", id);
     }
