@@ -126,7 +126,10 @@ try
 
         var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
         var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-        c.IncludeXmlComments(xmlPath);
+        if (File.Exists(xmlPath))
+        {
+            c.IncludeXmlComments(xmlPath);
+        }
     });
 
     var app = builder.Build();
@@ -152,7 +155,10 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        db.Database.Migrate();
+        if (db.Database.IsRelational())
+        {
+            db.Database.Migrate();
+        }
         await DataSeeder.SeedAsync(db);
     }
 
@@ -162,7 +168,5 @@ catch (Exception ex)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
 }
-finally
-{
-    Log.CloseAndFlush();
-}
+
+public partial class Program { }
