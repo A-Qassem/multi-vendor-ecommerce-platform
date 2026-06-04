@@ -49,6 +49,32 @@ public class AuthService : IAuthService
         return await IssueTokensAsync(merchant, ct);
     }
 
+    public async Task<AuthResponse> RefreshAsync(RefreshTokenRequest request, CancellationToken ct = default)
+    {
+        var token = await _db.RefreshTokens
+            .Include(t => t.Merchant)
+            .FirstOrDefaultAsync(t => t.Token == request.RefreshToken, ct);
+
+        if (token is null || token.IsRevoked || token.ExpiresAt < DateTime.UtcNow)
+            throw new UnauthorizedAccessException("Refresh token is invalid, revoked, or expired.");
+
+        token.IsRevoked = true;
+
+        return await IssueTokensAsync(token.Merchant, ct);
+    }
+
+    public async Task LogoutAsync(LogoutRequest request, CancellationToken ct = default)
+    {
+        var token = await _db.RefreshTokens
+            .FirstOrDefaultAsync(t => t.Token == request.RefreshToken, ct);
+
+        if (token is null || token.IsRevoked || token.ExpiresAt < DateTime.UtcNow)
+            throw new InvalidOperationException("Refresh token is invalid, revoked, or expired.");
+
+        token.IsRevoked = true;
+        await _db.SaveChangesAsync(ct);
+    }
+
     private async Task<AuthResponse> IssueTokensAsync(Merchant merchant, CancellationToken ct)
     {
         var (accessToken, expiration) = _tokenService.GenerateAccessToken(merchant);
@@ -72,16 +98,5 @@ public class AuthService : IAuthService
             Expiration = expiration,
             MerchantId = merchant.Id
         };
-    }
-    public async Task LogoutAsync(LogoutRequest request, CancellationToken ct = default)
-    {
-        var token = await _db.RefreshTokens
-            .FirstOrDefaultAsync(t => t.Token == request.RefreshToken, ct);
-
-        if (token is null || token.IsRevoked)
-            throw new InvalidOperationException("Refresh token is invalid or already revoked.");
-
-        token.IsRevoked = true;
-        await _db.SaveChangesAsync(ct);
     }
 }
