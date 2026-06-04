@@ -2,6 +2,7 @@ using MultiVendor.Ecommerce.Application.Common;
 using MultiVendor.Ecommerce.Application.DTOs.Variants;
 using MultiVendor.Ecommerce.Application.Interfaces;
 using MultiVendor.Ecommerce.Domain.Entities;
+using Serilog;
 
 namespace MultiVendor.Ecommerce.Application.Services;
 
@@ -18,7 +19,7 @@ public class VariantService : IVariantService
     {
         _variantRepository = variantRepository;
         _productRepository = productRepository;
-        _currentMerchant = currentMerchant;
+        _currentMerchant   = currentMerchant;
     }
 
     public async Task<VariantResponse> GetByIdAsync(Guid productId, Guid variantId)
@@ -43,9 +44,9 @@ public class VariantService : IVariantService
 
         return new PagedResult<VariantResponse>
         {
-            Data = items.Select(MapToResponse).ToList(),
-            Page = request.Page,
-            PageSize = pageSize,
+            Data       = items.Select(MapToResponse).ToList(),
+            Page       = request.Page,
+            PageSize   = pageSize,
             TotalCount = totalCount
         };
     }
@@ -55,27 +56,30 @@ public class VariantService : IVariantService
         await VerifyProductOwnershipAsync(productId);
 
         if (await _variantRepository.SkuExistsAsync(request.SKU))
+        {
+            Log.Warning("Duplicate SKU attempted: {SKU}", request.SKU);
             throw new InvalidOperationException($"SKU '{request.SKU}' already exists.");
+        }
 
         var variant = new ProductVariant
         {
-            ProductId          = productId,
-            SKU                = request.SKU,
-            Quantity           = request.Quantity,
-            LowStockThreshold  = request.LowStockThreshold,
-            PriceOverride      = request.PriceOverride,
-            CompareAtPrice     = request.CompareAtPrice,
-            DiscountStartDate  = request.DiscountStartDate,
-            DiscountEndDate    = request.DiscountEndDate,
-            IsActive           = request.IsActive,
-            AttributeValues    = request.Attributes
-                .Select(a => new VariantAttributeValue
-                {
-                    AttributeOptionId = a.AttributeOptionId
-                }).ToList()
+            ProductId         = productId,
+            SKU               = request.SKU,
+            Quantity          = request.Quantity,
+            LowStockThreshold = request.LowStockThreshold,
+            PriceOverride     = request.PriceOverride,
+            CompareAtPrice    = request.CompareAtPrice,
+            DiscountStartDate = request.DiscountStartDate,
+            DiscountEndDate   = request.DiscountEndDate,
+            IsActive          = request.IsActive,
+            AttributeValues   = request.Attributes
+                .Select(a => new VariantAttributeValue { AttributeOptionId = a.AttributeOptionId })
+                .ToList()
         };
 
         var created = await _variantRepository.CreateAsync(variant);
+        Log.Information("Variant created: {VariantId} with SKU: {SKU}", created.Id, request.SKU);
+
         var withAttributes = await _variantRepository.GetByIdWithAttributesAsync(created.Id)
             ?? throw new InvalidOperationException("Failed to load created variant.");
 
@@ -95,18 +99,20 @@ public class VariantService : IVariantService
         if (request.SKU is not null && request.SKU != variant.SKU)
         {
             if (await _variantRepository.SkuExistsAsync(request.SKU, excludeVariantId: variantId))
+            {
+                Log.Warning("Duplicate SKU attempted: {SKU}", request.SKU);
                 throw new InvalidOperationException($"SKU '{request.SKU}' already exists.");
-
+            }
             variant.SKU = request.SKU;
         }
 
-        if (request.Quantity.HasValue)           variant.Quantity          = request.Quantity.Value;
-        if (request.LowStockThreshold.HasValue)  variant.LowStockThreshold = request.LowStockThreshold;
-        if (request.PriceOverride.HasValue)      variant.PriceOverride     = request.PriceOverride;
-        if (request.CompareAtPrice.HasValue)     variant.CompareAtPrice    = request.CompareAtPrice;
-        if (request.DiscountStartDate.HasValue)  variant.DiscountStartDate = request.DiscountStartDate;
-        if (request.DiscountEndDate.HasValue)    variant.DiscountEndDate   = request.DiscountEndDate;
-        if (request.IsActive.HasValue)           variant.IsActive          = request.IsActive.Value;
+        if (request.Quantity.HasValue)          variant.Quantity          = request.Quantity.Value;
+        if (request.LowStockThreshold.HasValue) variant.LowStockThreshold = request.LowStockThreshold;
+        if (request.PriceOverride.HasValue)     variant.PriceOverride     = request.PriceOverride;
+        if (request.CompareAtPrice.HasValue)    variant.CompareAtPrice    = request.CompareAtPrice;
+        if (request.DiscountStartDate.HasValue) variant.DiscountStartDate = request.DiscountStartDate;
+        if (request.DiscountEndDate.HasValue)   variant.DiscountEndDate   = request.DiscountEndDate;
+        if (request.IsActive.HasValue)          variant.IsActive          = request.IsActive.Value;
 
         if (request.Attributes is not null)
         {
@@ -120,6 +126,7 @@ public class VariantService : IVariantService
         }
 
         await _variantRepository.UpdateAsync(variant);
+        Log.Information("Variant updated: {VariantId}", variantId);
 
         var updated = await _variantRepository.GetByIdWithAttributesAsync(variantId)
             ?? throw new InvalidOperationException("Failed to load updated variant.");
@@ -138,6 +145,7 @@ public class VariantService : IVariantService
             throw new KeyNotFoundException($"Variant '{variantId}' was not found.");
 
         await _variantRepository.DeleteAsync(variant);
+        Log.Information("Variant deleted: {VariantId}", variantId);
     }
 
     private async Task VerifyProductOwnershipAsync(Guid productId)

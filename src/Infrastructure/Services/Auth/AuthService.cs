@@ -3,6 +3,7 @@ using MultiVendor.Ecommerce.Application.DTOs.Auth;
 using MultiVendor.Ecommerce.Application.Interfaces.Auth;
 using MultiVendor.Ecommerce.Domain.Entities;
 using MultiVendor.Ecommerce.Infrastructure.Data;
+using Serilog;
 
 namespace MultiVendor.Ecommerce.Infrastructure.Services.Auth;
 
@@ -27,13 +28,15 @@ public class AuthService : IAuthService
 
         var merchant = new Merchant
         {
-            Name = request.Name,
-            Email = request.Email,
+            Name     = request.Name,
+            Email    = request.Email,
             Password = BCrypt.Net.BCrypt.HashPassword(request.Password)
         };
 
         await _db.Merchants.AddAsync(merchant, ct);
         await _db.SaveChangesAsync(ct);
+
+        Log.Information("New merchant registered: {Email}", request.Email);
 
         return await IssueTokensAsync(merchant, ct);
     }
@@ -44,8 +47,12 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(m => m.Email == request.Email, ct);
 
         if (merchant is null || !BCrypt.Net.BCrypt.Verify(request.Password, merchant.Password))
+        {
+            Log.Warning("Failed login attempt for email: {Email}", request.Email);
             throw new UnauthorizedAccessException("Invalid email or password.");
+        }
 
+        Log.Information("Merchant logged in: {Email}", request.Email);
         return await IssueTokensAsync(merchant, ct);
     }
 
@@ -56,10 +63,14 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(t => t.Token == request.RefreshToken, ct);
 
         if (token is null || token.IsRevoked || token.ExpiresAt < DateTime.UtcNow)
+        {
+            Log.Warning("Invalid refresh token used");
             throw new UnauthorizedAccessException("Refresh token is invalid, revoked, or expired.");
+        }
 
         token.IsRevoked = true;
 
+        Log.Information("Token refreshed for merchant: {MerchantId}", token.MerchantId);
         return await IssueTokensAsync(token.Merchant, ct);
     }
 
@@ -73,6 +84,8 @@ public class AuthService : IAuthService
 
         token.IsRevoked = true;
         await _db.SaveChangesAsync(ct);
+
+        Log.Information("Merchant logged out, token revoked");
     }
 
     private async Task<AuthResponse> IssueTokensAsync(Merchant merchant, CancellationToken ct)
@@ -83,9 +96,9 @@ public class AuthService : IAuthService
         var refreshTokenEntity = new RefreshToken
         {
             MerchantId = merchant.Id,
-            Token = rawRefreshToken,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            IsRevoked = false
+            Token      = rawRefreshToken,
+            ExpiresAt  = DateTime.UtcNow.AddDays(7),
+            IsRevoked  = false
         };
 
         await _db.RefreshTokens.AddAsync(refreshTokenEntity, ct);
@@ -93,10 +106,10 @@ public class AuthService : IAuthService
 
         return new AuthResponse
         {
-            AccessToken = accessToken,
+            AccessToken  = accessToken,
             RefreshToken = rawRefreshToken,
-            Expiration = expiration,
-            MerchantId = merchant.Id
+            Expiration   = expiration,
+            MerchantId   = merchant.Id
         };
     }
 }

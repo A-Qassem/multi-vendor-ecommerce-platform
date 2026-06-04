@@ -1,17 +1,16 @@
 using System.Net;
 using System.Text.Json;
+using Serilog;
 
 namespace MultiVendor.Ecommerce.Api.Middleware;
 
 public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<ExceptionHandlingMiddleware> _logger;
 
-    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    public ExceptionHandlingMiddleware(RequestDelegate next)
     {
         _next = next;
-        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -22,7 +21,6 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
             await WriteProblemAsync(context, ex);
         }
     }
@@ -31,23 +29,40 @@ public class ExceptionHandlingMiddleware
     {
         var (statusCode, title) = ex switch
         {
-            KeyNotFoundException        => (HttpStatusCode.NotFound,    "Resource not found."),
-            UnauthorizedAccessException => (HttpStatusCode.Forbidden,   "Access denied."),
+            KeyNotFoundException        => (HttpStatusCode.NotFound,            "Resource not found."),
+            UnauthorizedAccessException => (HttpStatusCode.Forbidden,           "Access denied."),
             InvalidOperationException e when e.Message.Contains("SKU")
-                                        => (HttpStatusCode.Conflict,    "Conflict."),
-            InvalidOperationException   => (HttpStatusCode.BadRequest,  "Bad request."),
+                                        => (HttpStatusCode.Conflict,            "Conflict."),
+            InvalidOperationException   => (HttpStatusCode.BadRequest,          "Bad request."),
             _                           => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };
 
-        context.Response.StatusCode = (int)statusCode;
+        switch (statusCode)
+        {
+            case HttpStatusCode.NotFound:
+                Log.Warning("Resource not found: {Message}", ex.Message);
+                break;
+            case HttpStatusCode.Forbidden:
+                Log.Warning("Unauthorized access attempt: {Message}", ex.Message);
+                break;
+            case HttpStatusCode.Conflict:
+            case HttpStatusCode.BadRequest:
+                Log.Warning("Bad request: {Message}", ex.Message);
+                break;
+            default:
+                Log.Error(ex, "Unhandled exception occurred");
+                break;
+        }
+
+        context.Response.StatusCode  = (int)statusCode;
         context.Response.ContentType = "application/problem+json";
 
         var problem = new
         {
-            type   = $"https://httpstatuses.com/{(int)statusCode}",
+            type    = $"https://httpstatuses.com/{(int)statusCode}",
             title,
-            status = (int)statusCode,
-            detail = ex.Message,
+            status  = (int)statusCode,
+            detail  = ex.Message,
             traceId = context.TraceIdentifier
         };
 
