@@ -1,7 +1,10 @@
+using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerUI;
 using MultiVendor.Ecommerce.Api.Middleware;
 using MultiVendor.Ecommerce.Application.Interfaces;
 using MultiVendor.Ecommerce.Application.Interfaces.Auth;
@@ -39,25 +42,69 @@ builder.Services.AddAuthorization();
 
 // ── Application Services ──────────────────────────────────────────────────────
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ITokenService,          TokenService>();
-builder.Services.AddScoped<IAuthService,           AuthService>();
+builder.Services.AddScoped<ITokenService,           TokenService>();
+builder.Services.AddScoped<IAuthService,            AuthService>();
 builder.Services.AddScoped<ICurrentMerchantService, CurrentMerchantService>();
-builder.Services.AddScoped<IProductRepository,     ProductRepository>();
-builder.Services.AddScoped<IProductService,        ProductService>();
-builder.Services.AddScoped<IVariantRepository,     VariantRepository>();
-builder.Services.AddScoped<IVariantService,        VariantService>();
+builder.Services.AddScoped<IProductRepository,      ProductRepository>();
+builder.Services.AddScoped<IProductService,         ProductService>();
+builder.Services.AddScoped<IVariantRepository,      VariantRepository>();
+builder.Services.AddScoped<IVariantService,         VariantService>();
 
-// ── API / OpenAPI ─────────────────────────────────────────────────────────────
+// ── API / Swagger ─────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title       = "Multi-Vendor E-Commerce API",
+        Version     = "v1",
+        Description = "Backend API for a multi-vendor e-commerce platform. " +
+                      "Authenticate using the /api/auth/login endpoint and paste " +
+                      "the returned access token into the Authorize button."
+    });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name        = "Authorization",
+        Scheme      = "Bearer",
+        In          = ParameterLocation.Header,
+        Type        = SecuritySchemeType.Http,
+        Description = "Enter your JWT access token"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id   = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+});
 
 var app = builder.Build();
 
 // ── Middleware pipeline ───────────────────────────────────────────────────────
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment())
-    app.MapOpenApi();
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Multi-Vendor E-Commerce API v1");
+    c.RoutePrefix = string.Empty;
+    c.DisplayRequestDuration();
+    c.DocExpansion(DocExpansion.List);
+});
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
