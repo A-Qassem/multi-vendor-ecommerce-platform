@@ -11,10 +11,11 @@ Built with **ASP.NET Core / .NET 9** following **Simplified Clean Architecture**
 - [Live Demo](#live-demo)
 - [Technology Stack](#technology-stack)
 - [Architecture Overview](#architecture-overview)
-- [Database Design](#database-design)
+- [Database Design Explanation](#database-design-explanation)
 - [Project Structure](#project-structure)
 - [Setup Instructions](#setup-instructions)
 - [Environment Configuration](#environment-configuration)
+- [API Documentation Instructions](#api-documentation-instructions)
 - [Manual Testing](#manual-testing)
 - [Running Tests](#running-tests)
 - [CI/CD Pipeline](#cicd-pipeline)
@@ -80,7 +81,7 @@ Api  →  Application  →  Domain
 
 ---
 
-## Database Design
+## Database Design Explanation
 
 ### ERD & Mapping Document
 
@@ -192,6 +193,25 @@ The application automatically runs EF Core migrations and seeds test data on fir
 | `Jwt:ExpiresInMinutes` | Access token lifetime (default: 15 minutes) |
 
 > **Security note:** JWT secret was rotated after an accidental early commit. Secrets are managed via .NET User Secrets in development and environment variables in production.
+
+---
+
+## API Documentation Instructions
+
+The application exposes a fully documented Swagger UI interface, allowing you to explore and test the endpoints directly from the browser.
+
+- **Local (Docker):** `http://localhost:8080/swagger`
+- **Local (.NET CLI):** `http://localhost:5222/swagger`
+- **Live Deployment:** `https://e-commerce-backend.runasp.net/swagger`
+
+### Authentication in Swagger
+
+Most endpoints are secured and require a valid Bearer token.
+1. Open the `POST /api/auth/login` endpoint in Swagger.
+2. Click **Try it out** and provide the seeded merchant credentials (e.g., `alex@shop.com` / `Password123!`).
+3. Execute the request and copy the `accessToken` string from the response.
+4. Scroll to the top of the Swagger page and click the **Authorize** button.
+5. Enter `Bearer <your_copied_token>` and click **Authorize**. You can now test the secured endpoints.
 
 ---
 
