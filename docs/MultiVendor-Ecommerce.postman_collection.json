@@ -1,0 +1,639 @@
+{
+  "info": {
+    "name": "Multi-Vendor E-Commerce Platform",
+    "description": "Complete API test collection. Run requests in order. Variables are auto-filled by test scripts.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://e-commerce-backend.runasp.net" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "merchant2Token", "value": "" },
+    { "key": "productId", "value": "" },
+    { "key": "merchant2ProductId", "value": "" },
+    { "key": "variantId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "1. Register Merchant 1",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Test Merchant\",\n  \"email\": \"testmerchant@test.com\",\n  \"password\": \"Password123!\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+            "pm.collectionVariables.set(\"refreshToken\", json.refreshToken);",
+            "pm.test(\"Access token returned\", () => pm.expect(json.accessToken).to.be.a(\"string\"));",
+            "pm.test(\"Refresh token returned\", () => pm.expect(json.refreshToken).to.be.a(\"string\"));",
+            "pm.test(\"MerchantId returned\", () => pm.expect(json.merchantId).to.be.a(\"string\"));"
+          ]}}]
+        },
+        {
+          "name": "2. Register Duplicate Email (expect 409)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Test Merchant\",\n  \"email\": \"testmerchant@test.com\",\n  \"password\": \"Password123!\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 409 Conflict\", () => pm.response.to.have.status(409));"
+          ]}}]
+        },
+        {
+          "name": "3. Register Missing Fields (expect 400)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"testmerchant@test.com\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 400 Bad Request\", () => pm.response.to.have.status(400));"
+          ]}}]
+        },
+        {
+          "name": "4. Login Merchant 1",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"testmerchant@test.com\",\n  \"password\": \"Password123!\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+            "pm.collectionVariables.set(\"refreshToken\", json.refreshToken);",
+            "pm.test(\"Access token returned\", () => pm.expect(json.accessToken).to.be.a(\"string\"));",
+            "pm.test(\"Refresh token returned\", () => pm.expect(json.refreshToken).to.be.a(\"string\"));"
+          ]}}]
+        },
+        {
+          "name": "5. Login Wrong Password (expect 401)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"testmerchant@test.com\",\n  \"password\": \"WrongPassword!\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 401 Unauthorized\", () => pm.response.to.have.status(401));"
+          ]}}]
+        },
+        {
+          "name": "6. Login Wrong Email (expect 401)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"nobody@test.com\",\n  \"password\": \"Password123!\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 401 Unauthorized\", () => pm.response.to.have.status(401));"
+          ]}}]
+        },
+        {
+          "name": "7. Refresh Token",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/refresh",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+            "pm.collectionVariables.set(\"refreshToken\", json.refreshToken);",
+            "pm.test(\"New access token returned\", () => pm.expect(json.accessToken).to.be.a(\"string\"));",
+            "pm.test(\"New refresh token returned\", () => pm.expect(json.refreshToken).to.be.a(\"string\"));"
+          ]}}]
+        },
+        {
+          "name": "8. Refresh Invalid Token (expect 401)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/refresh",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"this-is-not-a-valid-token\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 401 Unauthorized\", () => pm.response.to.have.status(401));"
+          ]}}]
+        },
+        {
+          "name": "9. Register Merchant 2 (for ownership tests)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Second Merchant\",\n  \"email\": \"merchant2@test.com\",\n  \"password\": \"Password123!\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set(\"merchant2Token\", json.accessToken);",
+            "pm.test(\"Merchant 2 token saved\", () => pm.expect(json.accessToken).to.be.a(\"string\"));"
+          ]}}]
+        },
+        {
+          "name": "9b. Login Merchant 2 (refresh token if expired)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"merchant2@test.com\",\n  \"password\": \"Password123!\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set(\"merchant2Token\", json.accessToken);",
+            "pm.test(\"Merchant 2 token refreshed\", () => pm.expect(json.accessToken).to.be.a(\"string\"));"
+          ]}}]
+        },
+        {
+          "name": "10. Logout (expect 204)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/logout",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 204 No Content\", () => pm.response.to.have.status(204));"
+          ]}}]
+        },
+        {
+          "name": "11. Login Again After Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"testmerchant@test.com\",\n  \"password\": \"Password123!\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+            "pm.collectionVariables.set(\"refreshToken\", json.refreshToken);"
+          ]}}]
+        },
+        {
+          "name": "12. Logout Without Auth (expect 401)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/logout",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"some-token\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 401 Unauthorized\", () => pm.response.to.have.status(401));"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "📦 Products",
+      "item": [
+        {
+          "name": "13. Create Product",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/products",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Classic T-Shirt\",\n  \"description\": \"A comfortable everyday t-shirt\",\n  \"status\": \"Active\",\n  \"basePrice\": 29.99\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 201 Created\", () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set(\"productId\", json.id);",
+            "pm.test(\"Product ID saved\", () => pm.expect(json.id).to.be.a(\"string\"));",
+            "pm.test(\"Name matches\", () => pm.expect(json.name).to.eql(\"Classic T-Shirt\"));",
+            "pm.test(\"Status matches\", () => pm.expect(json.status).to.eql(\"Active\"));",
+            "pm.test(\"BasePrice matches\", () => pm.expect(json.basePrice).to.eql(29.99));"
+          ]}}]
+        },
+        {
+          "name": "14. Create Product Without Auth (expect 401)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/products",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Unauthorized Product\",\n  \"basePrice\": 10.00\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 401 Unauthorized\", () => pm.response.to.have.status(401));"
+          ]}}]
+        },
+        {
+          "name": "15. Create Product Missing Name (expect 400)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/products",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"No name provided\",\n  \"basePrice\": 19.99\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 400 Bad Request\", () => pm.response.to.have.status(400));"
+          ]}}]
+        },
+        {
+          "name": "16. Get Product by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/{{productId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test(\"ID matches\", () => pm.expect(json.id).to.eql(pm.collectionVariables.get(\"productId\")));",
+            "pm.test(\"Name is correct\", () => pm.expect(json.name).to.eql(\"Classic T-Shirt\"));"
+          ]}}]
+        },
+        {
+          "name": "17. Get Product Not Found (expect 404)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/00000000-0000-0000-0000-000000000000",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 404 Not Found\", () => pm.response.to.have.status(404));"
+          ]}}]
+        },
+        {
+          "name": "18. Get Product by Merchant 2 (expect 403)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/{{productId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{merchant2Token}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 403 Forbidden\", () => pm.response.to.have.status(403));"
+          ]}}]
+        },
+        {
+          "name": "19. List Products",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products?page=1&pageSize=10&sortBy=createdAt&sortDir=desc",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test(\"Has data array\", () => pm.expect(json.data).to.be.an(\"array\"));",
+            "pm.test(\"Has pagination\", () => pm.expect(json.totalCount).to.be.a(\"number\"));",
+            "pm.test(\"Has totalPages\", () => pm.expect(json.totalPages).to.be.a(\"number\"));"
+          ]}}]
+        },
+        {
+          "name": "20. List Products - Search by Name",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products?search=T-Shirt",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test(\"Has data array\", () => pm.expect(json.data).to.be.an(\"array\"));"
+          ]}}]
+        },
+        {
+          "name": "21. List Products - Filter by Status",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products?status=Active",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test(\"All results are Active\", () => {",
+            "  json.data.forEach(p => pm.expect(p.status).to.eql(\"Active\"));",
+            "});"
+          ]}}]
+        },
+        {
+          "name": "22. Update Product",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/products/{{productId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Classic T-Shirt Updated\",\n  \"basePrice\": 34.99\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test(\"Name updated\", () => pm.expect(json.name).to.eql(\"Classic T-Shirt Updated\"));",
+            "pm.test(\"Price updated\", () => pm.expect(json.basePrice).to.eql(34.99));"
+          ]}}]
+        },
+        {
+          "name": "23. Update Product by Merchant 2 (expect 403)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/products/{{productId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{merchant2Token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Hacked Product\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 403 Forbidden\", () => pm.response.to.have.status(403));"
+          ]}}]
+        },
+        {
+          "name": "24. Create Product for Merchant 2",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/products",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{merchant2Token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Merchant 2 Laptop\",\n  \"description\": \"A powerful laptop\",\n  \"status\": \"Active\",\n  \"basePrice\": 999.99\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 201 Created\", () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set(\"merchant2ProductId\", json.id);",
+            "pm.test(\"Merchant 2 product ID saved\", () => pm.expect(json.id).to.be.a(\"string\"));"
+          ]}}]
+        },
+        {
+          "name": "25. Merchant 1 Cannot Access Merchant 2 Product (expect 403)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/{{merchant2ProductId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 403 Forbidden\", () => pm.response.to.have.status(403));"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "🎨 Variants",
+      "item": [
+        {
+          "name": "26. Create Variant - Red/Small",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"TSH-RED-SM\",\n  \"quantity\": 50,\n  \"lowStockThreshold\": 5,\n  \"priceOverride\": 27.99,\n  \"isActive\": true,\n  \"attributes\": []\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 201 Created\", () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set(\"variantId\", json.id);",
+            "pm.test(\"Variant ID saved\", () => pm.expect(json.id).to.be.a(\"string\"));",
+            "pm.test(\"SKU matches\", () => pm.expect(json.sku).to.eql(\"TSH-RED-SM\"));",
+            "pm.test(\"Quantity matches\", () => pm.expect(json.quantity).to.eql(50));",
+            "pm.test(\"PriceOverride matches\", () => pm.expect(json.priceOverride).to.eql(27.99));"
+          ]}}]
+        },
+        {
+          "name": "27. Create Variant Duplicate SKU (expect 409)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"TSH-RED-SM\",\n  \"quantity\": 10,\n  \"isActive\": true,\n  \"attributes\": []\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 409 Conflict\", () => pm.response.to.have.status(409));"
+          ]}}]
+        },
+        {
+          "name": "28. Create Variant Without Auth (expect 401)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"TSH-NO-AUTH\",\n  \"quantity\": 10,\n  \"isActive\": true,\n  \"attributes\": []\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 401 Unauthorized\", () => pm.response.to.have.status(401));"
+          ]}}]
+        },
+        {
+          "name": "29. Create Variant by Merchant 2 on Merchant 1 Product (expect 403)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{merchant2Token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"TSH-HACKED\",\n  \"quantity\": 10,\n  \"isActive\": true,\n  \"attributes\": []\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 403 Forbidden\", () => pm.response.to.have.status(403));"
+          ]}}]
+        },
+        {
+          "name": "30. Get Variant by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test(\"ID matches\", () => pm.expect(json.id).to.eql(pm.collectionVariables.get(\"variantId\")));",
+            "pm.test(\"SKU matches\", () => pm.expect(json.sku).to.eql(\"TSH-RED-SM\"));",
+            "pm.test(\"Has attributes array\", () => pm.expect(json.attributes).to.be.an(\"array\"));"
+          ]}}]
+        },
+        {
+          "name": "31. Get Variant Not Found (expect 404)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants/00000000-0000-0000-0000-000000000000",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 404 Not Found\", () => pm.response.to.have.status(404));"
+          ]}}]
+        },
+        {
+          "name": "32. List Variants",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants?page=1&pageSize=10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test(\"Has data array\", () => pm.expect(json.data).to.be.an(\"array\"));",
+            "pm.test(\"Has totalCount\", () => pm.expect(json.totalCount).to.be.a(\"number\"));"
+          ]}}]
+        },
+        {
+          "name": "33. List Variants - Filter by IsActive",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants?isActive=true",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test(\"All variants are active\", () => {",
+            "  json.data.forEach(v => pm.expect(v.isActive).to.be.true);",
+            "});"
+          ]}}]
+        },
+        {
+          "name": "34. List Variants by Merchant 2 (expect 403)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants",
+            "header": [{ "key": "Authorization", "value": "Bearer {{merchant2Token}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 403 Forbidden\", () => pm.response.to.have.status(403));"
+          ]}}]
+        },
+        {
+          "name": "35. Update Variant",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 75,\n  \"priceOverride\": 24.99,\n  \"isActive\": true\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test(\"Quantity updated\", () => pm.expect(json.quantity).to.eql(75));",
+            "pm.test(\"Price updated\", () => pm.expect(json.priceOverride).to.eql(24.99));"
+          ]}}]
+        },
+        {
+          "name": "36. Update Variant by Merchant 2 (expect 403)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{merchant2Token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 999\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 403 Forbidden\", () => pm.response.to.have.status(403));"
+          ]}}]
+        },
+        {
+          "name": "37. Delete Variant by Merchant 2 (expect 403)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{merchant2Token}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 403 Forbidden\", () => pm.response.to.have.status(403));"
+          ]}}]
+        },
+        {
+          "name": "38. Delete Variant (expect 204)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 204 No Content\", () => pm.response.to.have.status(204));"
+          ]}}]
+        },
+        {
+          "name": "39. Get Deleted Variant (expect 404)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 404 Not Found - soft deleted\", () => pm.response.to.have.status(404));"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "🗑️ Cleanup",
+      "item": [
+        {
+          "name": "40. Delete Product by Merchant 2 (expect 403)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/products/{{productId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{merchant2Token}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 403 Forbidden\", () => pm.response.to.have.status(403));"
+          ]}}]
+        },
+        {
+          "name": "41. Delete Product (expect 204)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/products/{{productId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 204 No Content\", () => pm.response.to.have.status(204));"
+          ]}}]
+        },
+        {
+          "name": "42. Get Deleted Product (expect 404)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/{{productId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test(\"Status is 404 Not Found - soft deleted\", () => pm.response.to.have.status(404));"
+          ]}}]
+        }
+      ]
+    }
+  ]
+}

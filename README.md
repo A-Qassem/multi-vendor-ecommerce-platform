@@ -15,6 +15,7 @@ Built with **ASP.NET Core / .NET 9** following **Simplified Clean Architecture**
 - [Project Structure](#project-structure)
 - [Setup Instructions](#setup-instructions)
 - [Environment Configuration](#environment-configuration)
+- [Manual Testing](#manual-testing)
 - [Running Tests](#running-tests)
 - [CI/CD Pipeline](#cicd-pipeline)
 
@@ -191,6 +192,24 @@ The application automatically runs EF Core migrations and seeds test data on fir
 | `Jwt:ExpiresInMinutes` | Access token lifetime (default: 15 minutes) |
 
 > **Security note:** JWT secret was rotated after an accidental early commit. Secrets are managed via .NET User Secrets in development and environment variables in production.
+
+---
+
+## Manual Testing
+
+A comprehensive Postman collection is included in the repository for manual API testing.
+
+**1. Import the Collection:**
+Open Postman and import the provided JSON file:
+[`docs/MultiVendor-Ecommerce.postman_collection.json`](docs/MultiVendor-Ecommerce.postman_collection.json)
+
+**2. Configure Environment:**
+The collection uses a `{{baseUrl}}` variable. Set it to either:
+- Local: `http://localhost:5222` (or `http://localhost:8080` for Docker)
+- Live: `https://e-commerce-backend.runasp.net`
+
+**3. Authenticate:**
+Use the `Login` endpoints in the collection to authenticate. It will return an `accessToken` which you can use as a Bearer Token for protected endpoints.
 
 ---
 
